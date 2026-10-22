@@ -11,15 +11,44 @@ n+='<circle cx="'+d[0]+'" cy="'+d[1]+'" r="3.5" fill="#fff"/><text x="'+d[0]+'" 
 n+='<circle class="pulse" cx="562" cy="125" r="5" fill="#FFB400"/><circle cx="562" cy="125" r="5.5" fill="#FFB400" stroke="#080b10" stroke-width="2"/><text x="562" y="108" font-size="11" font-weight="700" fill="#FFB400" text-anchor="middle" font-family="Barlow Condensed,sans-serif">ISLAMABAD</text>';
 document.getElementById('routes').innerHTML=r;document.getElementById('nodes').innerHTML=n;
 var form=document.getElementById('f'),st=document.getElementById('st'),btn=form.querySelector('button'),ok0=st.innerHTML;
-form.onsubmit=function(e){e.preventDefault();
-if(form._honey.value)return;
-if(!form.name.value.trim()||!form.phone.value.trim()){st.className='err';st.textContent='Please enter your name and phone number.';return}
-btn.disabled=true;btn.textContent='Sending...';st.className='hint';st.textContent='Sending your enquiry...';
-fetch('https://formsubmit.co/ajax/anzarbukhari123@gmail.com',{method:'POST',headers:{'Accept':'application/json'},body:new FormData(form)})
-.then(function(r){return r.json()})
-.then(function(d){if(d.success===true||d.success==='true'){form.reset();st.className='ok';st.textContent='Thank you. Your enquiry has been sent to our team and we will contact you soon.'}else{throw new Error('x')}})
-.catch(function(){st.className='err';st.innerHTML='Sorry, your message could not be sent. Please call 0333-5132140 or <a href="https://wa.me/923335132140" target="_blank" rel="noopener">message us on WhatsApp</a>.'})
-.then(function(){btn.disabled=false;btn.textContent='Send enquiry by email'})};
+form.onsubmit=function(e){
+  e.preventDefault();
+  if(form._honey.value)return;
+  if(!form.name.value.trim()||!form.phone.value.trim()){
+    st.className='err';
+    st.textContent='Please enter your name and phone number.';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='Sending...';
+  st.className='hint';
+  st.textContent='Sending your enquiry...';
+
+  fetch('https://formsubmit.co/ajax/anzarbukhari123@gmail.com',{
+    method:'POST',
+    headers:{'Accept':'application/json'},
+    body:new FormData(form)
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.success===true||d.success==='true'){
+      form.reset();
+      st.className='ok';
+      st.textContent='Thank you. Your enquiry has been sent successfully.';
+    } else {
+      st.className='err';
+      st.textContent='Sorry, your message could not be sent.';
+    }
+  })
+  .catch(function(){
+    st.className='err';
+    st.innerHTML='Sorry, your message could not be sent. Please call <a href="tel:+923335132140">0333-5132140</a> or message us on WhatsApp.';
+  })
+  .then(function(){
+    btn.disabled=false;
+    btn.textContent='Send enquiry by email';
+  });
+};
 // AI chat assistant (talks to /api/chat, see SETUP-CHATBOT.txt)
 var cp=document.getElementById('cp'),cb=document.getElementById('cb'),cm=document.getElementById('cm'),cf=document.getElementById('cf'),ci=document.getElementById('ci'),hist=[],busy=false;
 function add(t,w){var d=document.createElement('div');d.className='m '+w;d.textContent=t;cm.appendChild(d);cm.scrollTop=cm.scrollHeight;return d}
