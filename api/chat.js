@@ -1,6 +1,4 @@
 // Vercel serverless function: secure proxy between the website chat and the Groq API.
-// The API key is read from the GROQ_API_KEY environment variable and never reaches the browser.
-
 const SYSTEM = `You are the website assistant for Hassan Diesel Engineering (Pvt) Ltd., Islamabad, Pakistan. Answer visitors' questions.
 
 FACTS YOU MAY USE:
@@ -24,6 +22,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    console.error('ERROR: GROQ_API_KEY is not set in environment variables.');
+    return res.status(500).json({ error: 'Server configuration error: missing API key.' });
+  }
+
   try {
     const { messages } = req.body;
 
@@ -31,33 +35,33 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
             content: SYSTEM
           },
-          ...messages
+          ...(messages || [])
         ],
         temperature: 0.7,
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Groq API error:', errorData);
-      return res.status(response.status).json({ error: 'Failed to fetch from Groq API' });
+      const errorText = await response.text();
+      console.error('Groq API Returned Error:', response.status, errorText);
+      return res.status(response.status).json({ error: 'Groq API request failed', details: errorText });
     }
 
     const data = await response.json();
-    const reply = data.choices[0].message.content;
+    const reply = data.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     return res.status(200).json({ reply });
   } catch (error) {
     console.error('Server error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-} 
+}
