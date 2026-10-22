@@ -31,9 +31,21 @@ addEventListener('keydown',function(e){if(e.key==='Escape')toggle(false)});
 function ask(q){if(busy||!q.trim())return;busy=true;add(q,'u');hist.push({role:'user',content:q});ci.value='';cf.querySelector('button').disabled=true;
 var t=add('Typing...','b t');
 fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist})})
-.then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'x');return d})})
+.then(function(r){
+  return r.json().catch(function(){return {error:'Server error ('+r.status+')'}}).then(function(d){
+    if(!r.ok) throw new Error(d.error || d.details || 'Request failed ('+r.status+')');
+    return d;
+  });
+})
 .then(function(d){t.className='m b';t.textContent=d.reply;hist.push({role:'assistant',content:d.reply})})
-.catch(function(e){hist.pop();t.className='m b';t.textContent='Sorry, the assistant is not available right now. Please call 0333-5132140 or ';var a=document.createElement('a');a.href='https://wa.me/923335132140';a.target='_blank';a.rel='noopener';a.textContent='message us on WhatsApp';t.appendChild(a);t.appendChild(document.createTextNode('.'))})
+.catch(function(e){
+  console.error('Chatbot error:', e);
+  hist.pop();
+  t.className='m b';
+  t.textContent='Sorry, the assistant is not available right now. Please call 0333-5132140 or ';
+  var a=document.createElement('a');a.href='https://wa.me/923335132140';a.target='_blank';a.rel='noopener';a.textContent='message us on WhatsApp';
+  t.appendChild(a);t.appendChild(document.createTextNode('.'));
+})
 .then(function(){busy=false;cf.querySelector('button').disabled=false;cm.scrollTop=cm.scrollHeight})}
 cf.onsubmit=function(e){e.preventDefault();ask(ci.value)};
 document.querySelectorAll('.chips button').forEach(function(b){b.onclick=function(){ask(b.textContent)}});

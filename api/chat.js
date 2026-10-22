@@ -22,29 +22,72 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
+  // Support both Grok (xAI) and Groq (GroqCloud) to prevent provider/naming confusion:
+  const xaiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
+
+  let apiKey = '';
+  let apiUrl = '';
+  let model = '';
+
+  if (xaiKey) {
+    apiKey = xaiKey;
+    apiUrl = 'https://api.x.ai/v1/chat/completions';
+    model = process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-2-latest';
+  } else if (groqKey) {
+    apiKey = groqKey;
+    // Auto-detect if user pasted an xAI key (starts with "xai-") into GROQ_API_KEY:
+    if (apiKey.startsWith('xai-')) {
+      apiUrl = 'https://api.x.ai/v1/chat/completions';
+      model = process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-2-latest';
+    } else {
+      apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+      model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    }
+  }
+
   if (!apiKey) {
-    console.error('ERROR: GROQ_API_KEY is not set in environment variables.');
-    return res.status(500).json({ error: 'Server configuration error: missing API key.' });
+    console.error('ERROR: Missing API key. Please set GROK_API_KEY (or XAI_API_KEY) for Grok, or GROQ_API_KEY for Groq in your environment variables.');
+    return res.status(500).json({
+      error: 'Chatbot configuration error: Missing API key.',
+      hint: 'Add GROK_API_KEY (from console.x.ai) or GROQ_API_KEY (from console.groq.com) in your Vercel Environment Variables, then redeploy.'
+    });
   }
 
   try {
-    const { messages } = req.body;
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const rawMessages = Array.isArray(body?.messages) ? body.messages : [];
+    const messages = rawMessages
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .slice(-10)
+      .map(m => ({ role: m.role, content: m.content.slice(0, 1000) }));
+
+    if (!messages.length || messages[messages.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'Please enter a valid message.' });
+    }
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: model,
         messages: [
           {
             role: 'system',
             content: SYSTEM
           },
-          ...(messages || [])
+          ...messages
         ],
         temperature: 0.7,
       })
@@ -52,16 +95,20 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Groq API Returned Error:', response.status, errorText);
-      return res.status(response.status).json({ error: 'Groq API request failed', details: errorText });
+      console.error(`AI API (${apiUrl}) returned error:`, response.status, errorText);
+      return res.status(response.status).json({
+        error: 'AI API request failed',
+        status: response.status,
+        details: errorText
+      });
     }
 
     const data = await response.json();
-    const reply = data.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+    const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response. Please contact our team.';
 
     return res.status(200).json({ reply });
   } catch (error) {
-    console.error('Server error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Server error in chat handler:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }
