@@ -1,0 +1,18 @@
+CHATBOT SETUP (Grok / xAI) - Hassan Diesel Engineering website
+
+The chat window talks to /api/chat (the file api/chat.js). That file calls the xAI API
+using your secret key, so the key is never visible on the website.
+
+1. Deploy this whole folder to Vercel (the folder that contains index.html AND the api folder).
+2. In Vercel open your project > Settings > Environment Variables and add:
+     XAI_API_KEY = your key from the xAI console   (required)
+     XAI_MODEL   = grok-4.7                         (optional, to use a different Grok model)
+3. Redeploy the project (Deployments > Redeploy) so the key is picked up.
+4. Open your live link, click the green chat button and ask a question to test.
+
+IMPORTANT
+- Never paste your API key into index.html, main.js, or into any chat. Only into Vercel settings.
+- If a key was ever shared publicly, delete it in the xAI console and create a new one.
+- Set a monthly spending limit in the xAI console so unexpected traffic cannot cost you much.
+- The chat only works on the deployed Vercel site (not by opening index.html from your computer).
+- To change what the assistant knows or how it answers, edit the SYSTEM text at the top of api/chat.js.
