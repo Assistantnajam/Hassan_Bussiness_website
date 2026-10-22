@@ -42,7 +42,8 @@ fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},bod
   console.error('Chatbot error:', e);
   hist.pop();
   t.className='m b';
-  t.textContent='Sorry, the assistant is not available right now. Please call 0333-5132140 or ';
+  var msg = (e && e.message && e.message !== 'x') ? ' (' + e.message + ')' : '';
+  t.textContent='Sorry, the assistant is not available right now' + msg + '. Please call 0333-5132140 or ';
   var a=document.createElement('a');a.href='https://wa.me/923335132140';a.target='_blank';a.rel='noopener';a.textContent='message us on WhatsApp';
   t.appendChild(a);t.appendChild(document.createTextNode('.'));
 })

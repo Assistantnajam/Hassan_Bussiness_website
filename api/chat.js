@@ -22,36 +22,34 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Support both Grok (xAI) and Groq (GroqCloud) to prevent provider/naming confusion:
-  const xaiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
-
-  let apiKey = '';
-  let apiUrl = '';
-  let model = '';
-
-  if (xaiKey) {
-    apiKey = xaiKey;
-    apiUrl = 'https://api.x.ai/v1/chat/completions';
-    model = process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-2-latest';
-  } else if (groqKey) {
-    apiKey = groqKey;
-    // Auto-detect if user pasted an xAI key (starts with "xai-") into GROQ_API_KEY:
-    if (apiKey.startsWith('xai-')) {
-      apiUrl = 'https://api.x.ai/v1/chat/completions';
-      model = process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-2-latest';
-    } else {
-      apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-      model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-    }
-  }
+  // Read any possible environment variable name:
+  const apiKey = (
+    process.env.GROQ_API_KEY ||
+    process.env.GROK_API_KEY ||
+    process.env.XAI_API_KEY ||
+    ''
+  ).trim();
 
   if (!apiKey) {
-    console.error('ERROR: Missing API key. Please set GROK_API_KEY (or XAI_API_KEY) for Grok, or GROQ_API_KEY for Groq in your environment variables.');
+    console.error('ERROR: Missing API key. Please set GROQ_API_KEY in your Vercel environment variables.');
     return res.status(500).json({
       error: 'Chatbot configuration error: Missing API key.',
-      hint: 'Add GROK_API_KEY (from console.x.ai) or GROQ_API_KEY (from console.groq.com) in your Vercel Environment Variables, then redeploy.'
+      details: 'Please add GROQ_API_KEY (from console.groq.com) in Vercel Environment Variables and redeploy.'
     });
+  }
+
+  let apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  let model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+  // Auto-detect provider based on key prefix:
+  if (apiKey.startsWith('xai-')) {
+    // xAI (Grok)
+    apiUrl = 'https://api.x.ai/v1/chat/completions';
+    model = process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-2-latest';
+  } else {
+    // Groq (gsk_...) or default
+    apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+    model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
   }
 
   try {
